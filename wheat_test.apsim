@@ -1,0 +1,802 @@
+<folder version="36" creator="Apsim 7.8-r3867" name="simulations">
+  <targets>
+    <Target>/simulations/wheat/paddock/vert</Target>
+  </targets>
+  <vars />
+  <simulation name="wheat">
+    <targets />
+    <vars />
+    <metfile name="met">
+      <filename name="filename" input="yes">4_Dalby.met</filename>
+    </metfile>
+    <clock>
+      <start_date type="date" description="Enter the start date of the simulation">01/01/2000</start_date>
+      <end_date type="date" description="Enter the end date of the simulation">31/12/2002</end_date>
+      <targets type="text" description="targets" />
+    </clock>
+    <summaryfile>
+      <targets />
+    </summaryfile>
+    <area name="paddock">
+      <surfaceom name="SurfaceOrganicMatter">
+        <PoolName type="text" description="Organic Matter pool name">wheat</PoolName>
+        <type type="list" listvalues="bambatsi,barley,base_type,broccoli,camaldulensis,canola,centro,chickpea,chikenmanure_base,cm,cmA,cmB,constants,cotton,cowpea,danthonia,fababean,fieldpea,fym,gbean,globulus,goatmanure,grandis,grass,horsegram,inert,lablab,lentil,lucerne,lupin,maize,manB,manure,medic,millet,mucuna,nativepasture,navybean,oats,orobanche,peanut,pigeonpea,potato,rice,sorghum,soybean,stylo,sugar,sunflower,sweetcorn,sweetsorghum,tillage,tithonia,vetch,weed,wheat" description="Organic Matter type">wheat</type>
+        <mass type="text" description="Initial surface residue (kg/ha)">1000</mass>
+        <cnr type="text" description="C:N ratio of initial residue">80</cnr>
+        <standing_fraction type="text" description="Fraction of residue standing">0</standing_fraction>
+      </surfaceom>
+      <fertiliser />
+      <wheat />
+      <folder name="Manager">
+        <manager name="Reset_sowing">
+          <ui>
+            <category type="category" description="When should a reset be done" />
+            <modulename type="modulename" description="The module the event is to come from : ">wheat</modulename>
+            <eventname type="text" description="On which event should a reset be done : ">sowing</eventname>
+            <category type="category" description="Reset details" />
+            <soilmodule type="modulename" description="Name of your soil module : ">vert</soilmodule>
+            <surfaceommodule type="modulename" description="Name of your surface organic matter module : ">SurfaceOrganicMatter</surfaceommodule>
+            <pmodule type="modulename" description="Name of your phosphorus module : ">vert</pmodule>
+            <solutemodule type="modulename" description="Name of your Cl module :">Cl</solutemodule>
+            <resetWater type="yesno" description="Reset soil water?">yes</resetWater>
+            <resetNitrogen type="yesno" description="Reset soil nitrogen?">yes</resetNitrogen>
+            <resetSurfaceOM type="yesno" description="Reset surface organic matter?">yes</resetSurfaceOM>
+            <resetP type="yesno" description="Reset phosphorus?">no</resetP>
+            <resetCl type="yesno" description="Reset Cl?">no</resetCl>
+          </ui>
+          <script>
+            <text>
+            resetWater = '[resetWater]'
+            resetNitrogen  = '[resetNitrogen]'
+            resetSurfaceOM = '[resetSurfaceOM]'
+            resetP = '[resetP]'
+            resetCl = '[resetCl]'            
+            if (resetWater = 'yes') then
+                '[soilmodule] Water' reset
+            endif
+            if (resetNitrogen = 'yes') then
+                '[soilmodule] Nitrogen' reset
+            endif
+            if (resetSurfaceOM = 'yes') then
+                '[surfaceommodule]' reset
+            endif
+            if (resetP = 'yes') then
+                '[pmodule]' reset
+            endif
+            if (resetCl = 'yes') then
+               '[solutemodule]' set cl = 15.3 30.4 155.7 476.9 795.4 990.0 1035.0 (kg/ha)
+            endif
+            if (resetWater = 'yes' or resetNitrogen = 'yes' or resetSurfaceOM = 'yes' or resetP = 'yes' or resetCl = 'yes') then
+               act_mods reseting
+            endif
+      </text>
+            <event>[modulename].[eventname]</event>
+          </script>
+        </manager>
+        <manager name="Sowing_rule">
+          <ui>
+            <category type="category" description="Sowing criteria" />
+            <date1 type="ddmmmdate" description="Enter sowing window START date (dd-mmm) : ">15-may</date1>
+            <date2 type="ddmmmdate" description="Enter sowing window END date (dd-mmm) : ">30-jun</date2>
+            <must_sow type="yesno" description="Must sow? : ">yes</must_sow>
+            <raincrit type="text" description="Amount of rainfall : ">20</raincrit>
+            <rainnumdays type="text" description="Number of days of rainfall : ">7</rainnumdays>
+            <esw_amount type="text" description="Enter minimum allowable available soil water (mm) : ">100</esw_amount>
+            <category type="category" description="Sowing parameters" />
+            <crop type="crop" description="Enter name of crop to sow : ">wheat</crop>
+            <density type="text" description="Enter sowing density  (plants/m2) : ">100</density>
+            <depth type="text" description="Enter sowing depth  (mm) : ">30</depth>
+            <cultivar type="cultivars" description="Enter cultivar : ">hartog</cultivar>
+            <class type="classes" description="Enter crop growth class : ">plant</class>
+            <row_spacing type="text" description="Enter row spacing (mm) : ">250</row_spacing>
+          </ui>
+          <script>
+            <text>
+      if (paddock_is_fallow() = 1 and FallowIn &lt;&gt; 'yes' and (NextCrop = 0 or NextCrop = '[crop]')) then
+         if (date_within('[date1], [date2]') = 1) then
+            if (rain[[rainnumdays]] &gt;= [raincrit] AND esw &gt;= [esw_amount]) OR
+                ('[must_sow]' = 'yes' AND today = date('[date2]'))) THEN
+               ChooseNextCrop = 'yes'   ! for rotations
+date_before_sowing = dd_mm_yyyy ! shows the actual date of sowing
+swd_all_before_sowing = dul_dep()-sw_dep()
+               sw_all_before_sowing = sw_dep()
+               pawc_all_before_sowing = sw_dep() - ll()
+               pawc_all_cent_before_sowing = (sw_dep()-ll())*100/pawc_all
+               sawc_all_before_sowing = sw_dep() - ll15_dep()
+               sawc_all_cent_before_sowing = (sw_dep()-ll15_dep())*100/sawc_all                
+               cl_ppm_before_sowing = ((cl_ppm(1)*15)+(cl_ppm(2)*15)+(cl_ppm(3)*30)+(cl_ppm(4)*30)+(cl_ppm(5)*30)+(cl_ppm(6)*30)+(cl_ppm(7)*30))/180
+no3_ppm_before_sowing = (no3ppm(1)
+[crop] sow plants =[density], sowing_depth = [depth], cultivar = [cultivar], row_spacing = [row_spacing], crop_class = [class]
+            endif
+            if today = date('[date2]') then
+               ChooseNextCrop = 'yes'
+            endif
+         endif
+      endif
+            </text>
+            <event>start_of_day</event>
+          </script>
+          <script>
+            <text>
+            nextcrop = 0
+            fallowin = 0
+            </text>
+            <event>init</event>
+          </script>
+        </manager>
+        <manager name="Sowing_fertiliser">
+          <ui>
+            <category description="When should fertiliser be applied" type="category" />
+            <modulename type="modulename" description="On which module should the event come from : ">wheat</modulename>
+            <eventname type="text" description="On which event should fertiliser be applied : ">sowing</eventname>
+            <category description="Fertiliser application details" type="category" />
+            <fertmodule type="modulename" description="Module used to apply the fertiliser : ">fertiliser</fertmodule>
+            <fert_amount_sow type="text" description="Amount of starter fertiliser at sowing (kg/ha) : ">150</fert_amount_sow>
+            <fert_type_sow type="list" listvalues="NO3_N, NH4_N, NH4NO3, UAN_N, urea_N, urea_no3, urea, nh4so4_n, rock_p, banded_p, broadcast_p" description="Sowing fertiliser type : ">urea_N</fert_type_sow>
+          </ui>
+          <script>
+            <text>
+        [fertmodule] apply amount = [fert_amount_sow] (kg/ha), depth = 50 (mm), type = [fert_type_sow]
+            </text>
+            <event>[modulename].[eventname]</event>
+          </script>
+        </manager>
+        <manager name="Harvesting_rule">
+          <ui>
+            <category type="category" description="Harvesting criteria" />
+            <crop type="crop" description="Enter name of crop to harvest when ripe : ">wheat</crop>
+          </ui>
+          <script>
+            <text>
+
+           if [crop].StageName = 'harvest_ripe' or [crop].plant_status = 'dead' then
+              [crop]  harvest
+              [crop]  end_crop
+           endif
+
+            </text>
+            <event>end_of_day</event>
+          </script>
+        </manager>
+        <manager name="Formulas_CTF">
+          <script>
+            <text>therm_time_tot = 0
+
+sw_all = 0
+swd_all = 0
+
+total_n_loss_a_today = 0
+total_n_loss_b_today = 0
+losses = 0
+losses_old = 0
+losses_old_b = 0
+resid_n = 0
+bal_n_old = 0
+bal_n_old_b = 0
+net_n_min_tot() = 0
+
+
+
+
+
+
+</text>
+            <event>init</event>
+          </script>
+          <script>
+            <text>
+            </text>
+            <event>start_of_day</event>
+          </script>
+          <script>
+            <text>sat_all=sat_dep()
+dul_all=dul_dep()
+dp_all=sat_dep()-dul_dep()
+ll15_all=ll15_dep()
+sw_all_now =sw_dep()
+swd_all_now=dul_dep()-sw_dep()
+ll_all=ll() ! ll15_dep for ll15 and ll for ll crop
+
+! some more calculations
+sw_av_all = sw_dep()-ll15_dep() ! avilable soil water in the profile. This is same as esw (variable)
+! esw = sw_av_all, i.e. this is the average soil water from all layers
+sw_dep_m = sw_dep()/1.8
+
+
+sawc_all = dul_dep()-ll15_dep()
+sawc_all_now = sw_dep() - ll15_dep()
+sawc_all_cent_now = (sw_dep()-ll15_dep())*100/sawc_all
+
+pawc_all=dul_dep()-ll()
+pawc_all_now = sw_dep() - ll()
+pawc_all_cent_now = (sw_dep()-ll())*100/pawc_all
+
+change_soil_water = sw_all_before_sowing - sw_all
+change_swd_all=swd_all_before_sowing - swd_all
+
+totalrain = incroprain+fallowrain
+totalirrigation=incropirrigation+fallowirrigation
+totaltrans=incroptrans
+totaldrain = incropdrain+fallowdrain
+totalrunoff = incroprunoff+fallowrunoff
+totaleos = incropeos+falloweos
+totales = incropes+fallowes
+totalet =incropet+fallowet
+totalleachcl =incropleachcl+fallowleachcl
+
+
+trans=evap_plant
+et = evap_tot 
+evap_total = trans + es
+et = es + ep ! this is same as evap_total created by me and evap_tot default variable
+! note: evap_tot, the default parameter calculates et (evap by soil + plant only for incrop only. It does not calculates the total for fallow
+av_temp = (MaxT + MinT)/2
+dly_therm_time = av_temp - t_base 
+
+if (dly_therm_time &lt; t_base) then
+dly_therm_time = 0     
+else
+dly_therm_time = av_temp - t_base 
+endif
+ 
+     
+therm_time_tot = therm_time_tot + dly_therm_time
+
+! create a variable called dlt_n_immo_tot which accounts only the negetive values of dlt_n_min_tot()
+if (dlt_n_min_tot() &lt; 0 then
+dlt_n_immo_tot= dlt_n_min_tot()*-1 
+else
+dlt_n_immo_tot = 0
+endif
+
+n_net_change = dlt_nh4_net()+ dlt_no3_net()
+
+if (dlt_nh4_net() &lt; 0 then
+nh4_net_immo = dlt_nh4_net()*-1 
+else
+nh4_net_immo = 0
+endif
+if (dlt_no3_net() &lt; 0 then
+no3_net_immo = dlt_no3_net()*-1 
+else
+no3_net_immo = 0
+endif
+
+if (n_net_change &lt; 0 then
+n_net_immo = n_net_change *-1 
+else
+n_net_immo = 0
+endif
+
+
+
+
+! dsg now do an N balance and calculate an 'error'! apsim codes 3
+soil_n = nit_tot()
+!resid_n = surfaceom.surfaceom_n
+plant_n = d_nup
+
+! losses
+leach_n = leach_no3
+dnit_n = dnit()
+
+total_n = soil_n + resid_n + plant_n
+!losses = losses + leach_n + dnit_n
+bal_n = total_n + losses
+!error = bal_n - bal_n_old
+!bal_n_old = bal_n
+
+n_loss = dnit() + leach_no3 + dlt_n_loss_in_sed  ! kg/ha
+
+! calculation of N loss
+total_n_change = nit_tot() - d_nup
+total_n_change_b = nh4() + no3() + net_n_min_tot()- d_nup
+
+!ignore this line: !total_n_change_cum = (total_n_change_cum + total_n_change)             : !total_n_change_b_cum = (total_n_change_b_cum + total_n_change_b) 
+
+!calculate the daily change in the N : !this includes + for gain to the soil and - for loss from the soil
+!method a: 
+total_n_change_daily = total_n_change - losses_old    
+losses_old = total_n_change
+! method b
+total_n_change_daily_b = total_n_change_b - losses_old_b
+losses_old_b = total_n_change_b
+
+! now seperate the net change into positive and negetive values
+if (total_n_change_daily &lt;= 0) then
+total_n_loss_daily = total_n_change_daily *-1 
+else
+total_n_loss_daily = 0.0
+endif
+
+if (total_n_change_daily &gt; 0) then
+total_n_gain_daily = total_n_change_daily 
+else
+total_n_gain_daily = 0.0
+endif
+
+if (total_n_change_daily_b &lt;= 0) then
+total_n_loss_daily_b = total_n_change_daily_b *-1 
+else
+total_n_loss_daily_b = 0.0
+endif
+
+if (total_n_change_daily_b &gt; 0) then
+total_n_gain_daily_b = total_n_change_daily_b
+else
+total_n_gain_daily_b = 0.0
+endif
+
+totalfertiliser = fallowfertiliser+incropfertiliser
+totalnloss = fallownloss+incropnloss
+
+! Average Chloride concentration from all the layers
+cl_ppm_avg = ((cl_ppm(1)*15)+(cl_ppm(2)*15)+(cl_ppm(3)*30)+(cl_ppm(4)*30)+(cl_ppm(5)*30)+(cl_ppm(6)*30)+(cl_ppm(7)*30))/180
+
+! Average no3 concentration from all the layers
+no3_ppm_avg = ((no3ppm(1)*15)+(no3ppm(2)*15)+(no3ppm(3)*30)+(no3ppm(4)*30)+(no3ppm(5)*30)+(no3ppm(6)*30)+(no3ppm(7)*30))/180
+
+!common terms used for cotton apsim model
+!ep=evap_plant=transpiration
+!evap_soil=es=soil evaporation
+!evap_tot=evapotranspiration
+!leach_cl is the total leaching of cl below root zone (kg/ha). which is same as
+!flow_cl(x) where x is the bottom soil layer
+
+
+! erosion calculations
+! sed_conc is in g/L
+if (cover_tot &lt; 50) then   
+sed_conc = 16.52 - 0.46 * cover_tot + 0.0031 * cover_tot * cover_tot 
+endif
+if (cover_tot = 0) then
+sed_conc = 162.2
+endif
+if (cover_tot &gt;= 50) then
+sed_conc = -0.0254 * cover_tot + 2.54
+endif
+
+s = 0.001 !s = sine of slope angle 1 is the slope in %; usually it will be slope % devided by 0.01
+power_ls = 0.6 *(1.0 - 2.71828^(-35.835*s)) ! power equation in ls calculation
+ls_factor = ((100/22.1)^ power_ls) * (65.41 * s * s + 4.56 * s + 0.065)
+
+erosion = sed_conc * ls_factor * 0.45 * 1 * 1/10 * runoff
+
+!offsite_sed_delivery = erosion * sed_del_ratio !offsite_sed_delivery = t/ha; erosion = t/ha; sed_Del_rat = fraction e.g. 0.14;
+</text>
+            <event>end_of_day</event>
+          </script>
+          <script>
+            <text>date_sowing = dd_mm_yyyy  ! works only if reporting frequency is selected as harvest, if selected as sowing, previous year sowing is shown
+sw_all_after_sowing = sw_dep()
+swd_all_after_sowing = dul_dep()-sw_dep()
+sawc_all_cent_after_sowing = (sw_dep()-ll15_dep())*100/sawc_all
+pawc_all_cent_after_sowing = (sw_dep()-ll())*100/pawc_all
+cl_ppm_after_sowing = ((cl_ppm(1)*15)+(cl_ppm(2)*15)+(cl_ppm(3)*30)+(cl_ppm(4)*30)+(cl_ppm(5)*30)+(cl_ppm(6)*30)+(cl_ppm(7)*30))/180
+no3_ppm_after_sowing = no3ppm(1)</text>
+            <event>sowing</event>
+          </script>
+        </manager>
+        <tracker>
+          <variable>sum of dly_therm_time on end_day from sowing to harvesting as tt_sum</variable>
+          <variable>sum of rain on end_day from sowing to harvesting as incroprain</variable>
+          <variable>sum of rain on end_day from harvesting to sowing as fallowrain</variable>
+          <variable>sum of irrigation on end_day from sowing to harvesting as incropirrigation</variable>
+          <variable>sum of irrigation on end_day from harvesting to sowing as fallowirrigation</variable>
+          <variable>sum of es on end_day from sowing to harvesting as incropes</variable>
+          <variable>sum of es on end_day from harvesting to sowing as fallowes</variable>
+          <variable>sum of drain on end_day from sowing to harvesting as Incropdrain</variable>
+          <variable>sum of drain on end_day from harvesting to sowing as fallowdrain</variable>
+          <variable>sum of runoff on end_day from sowing to harvesting as Incroprunoff</variable>
+          <variable>sum of runoff on end_day from harvesting to sowing as fallowrunoff</variable>
+          <variable>sum of evap_tot on end_day from sowing to harvesting as incropet</variable>
+          <variable>sum of evap_tot on end_day from harvesting to sowing as fallowet</variable>
+          <variable>sum of ep on end_day from sowing to harvesting as incroptrans</variable>
+          <variable>date of sowing from reported to now as sowing_date1</variable>
+          <variable>date of sowing as sowing_date</variable>
+          <variable>sum of rain on end_of_day from start_year to end_year as yearrain</variable>
+          <variable>sum of rain on end_day from reported to now as rainfall1</variable>
+          <variable>sum of runoff on end_day from reported to now as runoff1</variable>
+          <variable>sum of drain on end_day from reported to now as drain1</variable>
+          <variable>sum of eos on end_day from reported to now as eos1</variable>
+          <variable>sum of es on end_day from reported to now as es1</variable>
+          <variable>sum of eos on end_day from sowing to harvesting as incropeos</variable>
+          <variable>sum of eos on end_day from harvesting to sowing as falloweos</variable>
+          <variable>sum of evap_soil on end_day from sowing to harvesting as incropsoilevap</variable>
+          <variable>sum of leach_cl on end_day from harvesting to sowing as fallowleach_cl</variable>
+          <variable>sum of leach_cl on end_day from sowing to harvesting as incropleach_cl</variable>
+          <variable>sum of leach_cl on end_day from start_year to sowing as fallowleach_cl1</variable>
+        </tracker>
+      </folder>
+      <outputfile>
+        <filename output="yes">wheat.out</filename>
+        <title>wheat</title>
+        <variables name="Variables">
+          <variable>dd/mm/yyyy as Date</variable>
+          <variable>biomass</variable>
+          <variable>yield</variable>
+          <variable>sawc_all_cent_after_sowing</variable>
+          <variable>sawc_all</variable>
+          <variable>no3_ppm_after_sowing</variable>
+        </variables>
+        <events name="Reporting_Frequency">
+          <event>harvesting</event>
+        </events>
+      </outputfile>
+      <Soil name="vert">
+        <RecordNumber>92</RecordNumber>
+        <ASCOrder>Vertosol</ASCOrder>
+        <SoilType>Clay</SoilType>
+        <Site>Generic (PAWC289)</Site>
+        <NearestTown>Dalby</NearestTown>
+        <Region>Darling Downs and Granite Belt</Region>
+        <State>Queensland</State>
+        <Country>Australia</Country>
+        <NaturalVegetation>NA</NaturalVegetation>
+        <ApsoilNumber>513-GENERIC</ApsoilNumber>
+        <Latitude>-27.183286</Latitude>
+        <Longitude>151.263748</Longitude>
+        <LocationAccuracy>Regional Soil Type</LocationAccuracy>
+        <YearOfSampling>0</YearOfSampling>
+        <DataSource>Generic soil. CSIRO Sustainable Ecosystems, Toowoomba</DataSource>
+        <Comments>Generic soil developed by Allan Peake. 'Typical Vertosol' soil properties have been calculated as the average of vertosols with similar characteristics from within the Apsoil database. Groupings were made on the basis of bulk density. Measured BD, DUL and CLL for the groups were then averaged to derive the characteristics of the typical Vertosols. They can then be used in conjunction with measured soil water to simplify the selection of appropriate Vertosols, for paddocks where full soil characterisations have not yet been completed. For more information see Peake et al. 2010: ‘A rapid method for estimating the plant available water capacity of Vertosols’, 2010 Australian Agronomy Conference. Typical Vertosols are different to 'Generic' soil types elsewhere in the Apsoil database, which are representative of certain soil types and districts, but have not been calculated from large numbers of similar, characterised soils.
+
+</Comments>
+        <Water>
+          <Thickness>
+            <double>150</double>
+            <double>150</double>
+            <double>300</double>
+            <double>300</double>
+            <double>300</double>
+            <double>300</double>
+            <double>300</double>
+          </Thickness>
+          <BD>
+            <double>0.99</double>
+            <double>1.04</double>
+            <double>1.06</double>
+            <double>1.07</double>
+            <double>1.1</double>
+            <double>1.14</double>
+            <double>1.16</double>
+          </BD>
+          <AirDry>
+            <double>0.135</double>
+            <double>0.225</double>
+            <double>0.305</double>
+            <double>0.305</double>
+            <double>0.305</double>
+            <double>0.305</double>
+            <double>0.305</double>
+          </AirDry>
+          <LL15>
+            <double>0.27</double>
+            <double>0.281</double>
+            <double>0.305</double>
+            <double>0.305</double>
+            <double>0.305</double>
+            <double>0.305</double>
+            <double>0.305</double>
+          </LL15>
+          <DUL>
+            <double>0.546</double>
+            <double>0.529</double>
+            <double>0.519</double>
+            <double>0.517</double>
+            <double>0.505</double>
+            <double>0.49</double>
+            <double>0.481</double>
+          </DUL>
+          <SAT>
+            <double>0.596</double>
+            <double>0.579</double>
+            <double>0.569</double>
+            <double>0.567</double>
+            <double>0.555</double>
+            <double>0.54</double>
+            <double>0.531</double>
+          </SAT>
+          <BDMetadata>
+            <string>Calculated from gravimetric moisture when profile wet but drained</string>
+            <string>Calculated from gravimetric moisture when profile wet but drained</string>
+            <string>Calculated from gravimetric moisture when profile wet but drained</string>
+            <string>Calculated from gravimetric moisture when profile wet but drained</string>
+            <string>Calculated from gravimetric moisture when profile wet but drained</string>
+            <string>Calculated from gravimetric moisture when profile wet but drained</string>
+            <string>Calculated from gravimetric moisture when profile wet but drained</string>
+          </BDMetadata>
+          <AirDryMetadata>
+            <string>Estimated based on local knowledge</string>
+            <string>Estimated based on local knowledge</string>
+            <string>Estimated based on local knowledge</string>
+            <string>Estimated based on local knowledge</string>
+            <string>Estimated based on local knowledge</string>
+            <string>Estimated based on local knowledge</string>
+            <string>Estimated based on local knowledge</string>
+          </AirDryMetadata>
+          <LL15Metadata>
+            <string>Estimated based on local knowledge</string>
+            <string>Estimated based on local knowledge</string>
+            <string>Estimated based on local knowledge</string>
+            <string>Estimated based on local knowledge</string>
+            <string>Estimated based on local knowledge</string>
+            <string>Estimated based on local knowledge</string>
+            <string>Estimated based on local knowledge</string>
+          </LL15Metadata>
+          <DULMetadata>
+            <string>FM &amp; E</string>
+            <string>FM &amp; E</string>
+            <string>FM &amp; E</string>
+            <string>FM &amp; E</string>
+            <string>FM &amp; E</string>
+            <string>FM &amp; E</string>
+            <string>FM &amp; E</string>
+          </DULMetadata>
+          <SATMetadata>
+            <string>Calculated from measured, estimated or calculated BD</string>
+            <string>Calculated from measured, estimated or calculated BD</string>
+            <string>Calculated from measured, estimated or calculated BD</string>
+            <string>Calculated from measured, estimated or calculated BD</string>
+            <string>Calculated from measured, estimated or calculated BD</string>
+            <string>Calculated from measured, estimated or calculated BD</string>
+            <string>Calculated from measured, estimated or calculated BD</string>
+          </SATMetadata>
+          <SoilCrop name="wheat">
+            <Thickness>
+              <double>150</double>
+              <double>150</double>
+              <double>300</double>
+              <double>300</double>
+              <double>300</double>
+              <double>300</double>
+              <double>300</double>
+            </Thickness>
+            <LL>
+              <double>0.27</double>
+              <double>0.281</double>
+              <double>0.305</double>
+              <double>0.305</double>
+              <double>0.305</double>
+              <double>0.305</double>
+              <double>0.305</double>
+            </LL>
+            <KL>
+              <double>0.06</double>
+              <double>0.06</double>
+              <double>0.06</double>
+              <double>0.04</double>
+              <double>0.04</double>
+              <double>0.02</double>
+              <double>0.02</double>
+            </KL>
+            <XF>
+              <double>1</double>
+              <double>1</double>
+              <double>1</double>
+              <double>1</double>
+              <double>1</double>
+              <double>1</double>
+              <double>1</double>
+            </XF>
+            <LLMetadata>
+              <string>Field measured and checked for sensibility</string>
+              <string>Field measured and checked for sensibility</string>
+              <string>Field measured and checked for sensibility</string>
+              <string>Field measured and checked for sensibility</string>
+              <string>Field measured and checked for sensibility</string>
+              <string>Field measured and checked for sensibility</string>
+              <string>Field measured and checked for sensibility</string>
+            </LLMetadata>
+          </SoilCrop>
+          <targets />
+          <vars />
+        </Water>
+        <SoilWater>
+          <SummerCona>3.5</SummerCona>
+          <SummerU>6</SummerU>
+          <SummerDate>1-Nov</SummerDate>
+          <WinterCona>2.5</WinterCona>
+          <WinterU>4</WinterU>
+          <WinterDate>1-Apr</WinterDate>
+          <DiffusConst>40</DiffusConst>
+          <DiffusSlope>16</DiffusSlope>
+          <Salb>0.12</Salb>
+          <CN2Bare>73</CN2Bare>
+          <CNRed>20</CNRed>
+          <CNCov>0.8</CNCov>
+          <Slope>NaN</Slope>
+          <DischargeWidth>NaN</DischargeWidth>
+          <CatchmentArea>NaN</CatchmentArea>
+          <MaxPond>NaN</MaxPond>
+          <Thickness>
+            <double>150</double>
+            <double>150</double>
+            <double>300</double>
+            <double>300</double>
+            <double>300</double>
+            <double>300</double>
+            <double>300</double>
+          </Thickness>
+          <SWCON>
+            <double>0.3</double>
+            <double>0.3</double>
+            <double>0.3</double>
+            <double>0.3</double>
+            <double>0.3</double>
+            <double>0.3</double>
+            <double>0.3</double>
+          </SWCON>
+        </SoilWater>
+        <SoilOrganicMatter>
+          <RootCN>40</RootCN>
+          <RootWt>1000</RootWt>
+          <SoilCN>12</SoilCN>
+          <EnrACoeff>7.4</EnrACoeff>
+          <EnrBCoeff>0.2</EnrBCoeff>
+          <Thickness>
+            <double>150</double>
+            <double>150</double>
+            <double>300</double>
+            <double>300</double>
+            <double>300</double>
+            <double>300</double>
+            <double>300</double>
+          </Thickness>
+          <OC>
+            <double>2.25</double>
+            <double>2.25</double>
+            <double>0.9</double>
+            <double>0.9</double>
+            <double>0.68</double>
+            <double>0.45</double>
+            <double>0.45</double>
+          </OC>
+          <OCMetadata>
+            <string>Estimated based on local knowledge</string>
+            <string>Estimated based on local knowledge</string>
+            <string>Estimated based on local knowledge</string>
+            <string>Estimated based on local knowledge</string>
+            <string>Estimated based on local knowledge</string>
+            <string>Estimated based on local knowledge</string>
+            <string>Estimated based on local knowledge</string>
+          </OCMetadata>
+          <FBiom>
+            <double>0.04</double>
+            <double>0.02</double>
+            <double>0.02</double>
+            <double>0.02</double>
+            <double>0.01</double>
+            <double>0.01</double>
+            <double>0.01</double>
+          </FBiom>
+          <FInert>
+            <double>0.4</double>
+            <double>0.6</double>
+            <double>0.8</double>
+            <double>1</double>
+            <double>1</double>
+            <double>1</double>
+            <double>1</double>
+          </FInert>
+          <OCUnits>WalkleyBlack</OCUnits>
+        </SoilOrganicMatter>
+        <Analysis>
+          <Thickness>
+            <double>150</double>
+            <double>150</double>
+            <double>300</double>
+            <double>300</double>
+            <double>300</double>
+            <double>300</double>
+            <double>300</double>
+          </Thickness>
+          <Texture>
+            <string />
+            <string />
+            <string />
+            <string />
+            <string />
+            <string />
+            <string />
+          </Texture>
+          <MunsellColour>
+            <string />
+            <string />
+            <string />
+            <string />
+            <string />
+            <string />
+            <string />
+          </MunsellColour>
+          <PH>
+            <double>8.4</double>
+            <double>8.6</double>
+            <double>8.9</double>
+            <double>8.9</double>
+            <double>8.8</double>
+            <double>8.6</double>
+            <double>8.4</double>
+          </PH>
+          <PHMetadata>
+            <string>Measured</string>
+            <string>Measured</string>
+            <string>Measured</string>
+            <string>Measured</string>
+            <string>Measured</string>
+            <string>Measured</string>
+            <string>Estimated based on local knowledge</string>
+          </PHMetadata>
+          <PHUnits>Water</PHUnits>
+          <BoronUnits>HotWater</BoronUnits>
+        </Analysis>
+        <InitialWater>
+          <FractionFull>1</FractionFull>
+          <DepthWetSoil>NaN</DepthWetSoil>
+          <PercentMethod>FilledFromTop</PercentMethod>
+          <targets>
+            <Target>/simulations/wheat/paddock/vert</Target>
+            <Target>/simulations/wheat/paddock/vert/InitialWater</Target>
+          </targets>
+          <vars />
+        </InitialWater>
+        <Sample name="InitialNitrogen">
+          <Thickness>
+            <double>150</double>
+            <double>150</double>
+            <double>300</double>
+            <double>300</double>
+            <double>300</double>
+            <double>300</double>
+            <double>300</double>
+          </Thickness>
+          <NO3>
+            <double>40</double>
+            <double>40</double>
+            <double>40</double>
+            <double>10</double>
+            <double>10</double>
+            <double>10</double>
+            <double>10</double>
+          </NO3>
+          <NH4>
+            <double>4</double>
+            <double>4</double>
+            <double>4</double>
+            <double>1</double>
+            <double>1</double>
+            <double>1</double>
+            <double>1</double>
+          </NH4>
+          <NO3Units>ppm</NO3Units>
+          <NH4Units>ppm</NH4Units>
+          <SWUnits>Volumetric</SWUnits>
+          <OCUnits>Total</OCUnits>
+          <PHUnits>Water</PHUnits>
+          <targets>
+          </targets>
+          <vars />
+        </Sample>
+      </Soil>
+      <outputfile name="outputfile1" enabled="no">
+        <filename output="yes">wheat outputfile1.out</filename>
+        <title>wheat outputfile1</title>
+        <variables name="Variables">
+          <variable>dd/mm/yyyy as Date</variable>
+          <variable>biomass</variable>
+          <variable>yield</variable>
+          <variable>sawc_all_cent_after_sowing</variable>
+          <variable>no3_ppm_after_sowing</variable>
+          <variable>no3ppm(1)</variable>
+        </variables>
+        <events name="Reporting_Frequency">
+          <event>daily</event>
+        </events>
+      </outputfile>
+    </area>
+  </simulation>
+  <factorial name="Factorials">
+    <active>0</active>
+    <settings fn="1" />
+  </factorial>
+</folder>
